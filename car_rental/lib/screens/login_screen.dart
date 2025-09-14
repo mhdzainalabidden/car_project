@@ -38,7 +38,8 @@ class _LoginScreenState extends State<LoginScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          // Navigate to main app or next screen
+          // Navigate to home screen
+          context.read<NavigationBloc>().add(NavigateToHome());
         } else if (state is AuthFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.error), backgroundColor: Colors.red),
@@ -107,12 +108,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      // Email/Phone Number
+                      // Email
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
-                          hintText: 'Email/Phone Number',
+                          hintText: 'Email Address',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: const BorderSide(color: Colors.grey),
@@ -130,7 +131,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your email or phone number';
+                            return 'Please enter your email';
+                          }
+                          if (!value.contains('@')) {
+                            return 'Please enter a valid email';
                           }
                           return null;
                         },
@@ -292,7 +296,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_formKey.currentState!.validate()) {
       context.read<AuthBloc>().add(
         LoginRequested(
-          emailOrPhone: _emailController.text.trim(),
+          email: _emailController.text.trim(),
           password: _passwordController.text,
         ),
       );
@@ -300,12 +304,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleForgotPassword() {
-    // TODO: Implement forgot password functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Forgot password functionality pending'),
-        backgroundColor: Colors.blue,
-      ),
-    );
+    context.read<NavigationBloc>().add(NavigateToForgotPassword());
   }
 }

@@ -9,30 +9,33 @@ class SignUpUseCase {
   Future<AuthResult> call({
     required String fullName,
     required String email,
+    required String phone,
     required String password,
-    required String country,
+    required int countryId,
   }) async {
     // Validate input
     if (fullName.isEmpty) {
-      return const AuthResult.failure(error: 'Full name is required');
+      return AuthResult.failure('Full name is required');
     }
     if (email.isEmpty || !email.contains('@')) {
-      return const AuthResult.failure(error: 'Valid email is required');
+      return AuthResult.failure('Valid email is required');
+    }
+    if (phone.isEmpty) {
+      return AuthResult.failure('Phone number is required');
     }
     if (password.length < 6) {
-      return const AuthResult.failure(
-        error: 'Password must be at least 6 characters',
-      );
+      return AuthResult.failure('Password must be at least 6 characters');
     }
-    if (country.isEmpty) {
-      return const AuthResult.failure(error: 'Country is required');
+    if (countryId <= 0) {
+      return AuthResult.failure('Valid country is required');
     }
 
     return await _authRepository.signUp(
       fullName: fullName,
       email: email,
+      phone: phone,
       password: password,
-      country: country,
+      countryId: countryId,
     );
   }
 }

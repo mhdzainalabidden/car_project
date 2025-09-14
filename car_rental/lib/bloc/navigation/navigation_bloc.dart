@@ -8,6 +8,9 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     on<NavigateToSignUp>(_onNavigateToSignUp);
     on<NavigateToLogin>(_onNavigateToLogin);
     on<NavigateToSplash>(_onNavigateToSplash);
+    on<NavigateToForgotPassword>(_onNavigateToForgotPassword);
+    on<NavigateToPhoneVerification>(_onNavigateToPhoneVerification);
+    on<NavigateToHome>(_onNavigateToHome);
   }
 
   void _onNavigateToOnboarding(
@@ -36,5 +39,28 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     Emitter<NavigationState> emit,
   ) {
     emit(SplashState());
+  }
+
+  void _onNavigateToForgotPassword(
+    NavigateToForgotPassword event,
+    Emitter<NavigationState> emit,
+  ) {
+    emit(ForgotPasswordState());
+  }
+
+  void _onNavigateToPhoneVerification(
+    NavigateToPhoneVerification event,
+    Emitter<NavigationState> emit,
+  ) {
+    emit(
+      PhoneVerificationState(
+        phone: event.phone,
+        verifyToken: event.verifyToken,
+      ),
+    );
+  }
+
+  void _onNavigateToHome(NavigateToHome event, Emitter<NavigationState> emit) {
+    emit(HomeState());
   }
 }

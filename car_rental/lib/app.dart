@@ -8,6 +8,9 @@ import 'screens/splash_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/forgot_password_screen.dart';
+import 'screens/phone_verification_request_screen.dart';
+import 'screens/home_screen.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -41,6 +44,13 @@ class AppNavigator extends StatelessWidget {
           OnboardingState() => const OnboardingScreen(),
           SignUpState() => const SignUpScreen(),
           LoginState() => const LoginScreen(),
+          ForgotPasswordState() => const ForgotPasswordScreen(),
+          PhoneVerificationState(phone: final phone, verifyToken: _) =>
+            PhoneVerificationRequestScreen(
+              initialPhone: phone,
+              initialCountryCode: '+1', // Default country code
+            ),
+          HomeState() => const HomeScreen(),
           _ => const SplashScreen(),
         };
       },

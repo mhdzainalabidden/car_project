@@ -7,22 +7,17 @@ class LoginUseCase {
   LoginUseCase(this._authRepository);
 
   Future<AuthResult> call({
-    required String emailOrPhone,
+    required String email,
     required String password,
   }) async {
     // Validate input
-    if (emailOrPhone.isEmpty) {
-      return const AuthResult.failure(
-        error: 'Email or phone number is required',
-      );
+    if (email.isEmpty) {
+      return AuthResult.failure('Email is required');
     }
     if (password.isEmpty) {
-      return const AuthResult.failure(error: 'Password is required');
+      return AuthResult.failure('Password is required');
     }
 
-    return await _authRepository.login(
-      emailOrPhone: emailOrPhone,
-      password: password,
-    );
+    return await _authRepository.login(email: email, password: password);
   }
 }

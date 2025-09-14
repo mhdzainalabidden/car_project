@@ -5,6 +5,9 @@ import '../bloc/navigation/navigation_event.dart';
 import '../presentation/bloc/auth/auth_bloc.dart';
 import '../presentation/bloc/auth/auth_event.dart';
 import '../presentation/bloc/auth/auth_state.dart';
+import '../domain/entities/country.dart';
+import '../domain/usecases/get_countries_usecase.dart';
+import '../injection/injection_container.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -17,65 +20,109 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  String? _selectedCountry;
+  int? _selectedCountryId;
   bool _obscurePassword = true;
+  bool _isLoadingCountries = true;
+  String? _countriesError;
+  List<Country> _countries = [];
+  int _currentPage = 1;
+  int _lastPage = 1;
+  int _totalCountries = 0;
+  late GetCountriesUseCase _getCountriesUseCase;
 
-  // Sample country list - will be replaced with API data later
-  final List<String> _countries = [
-    'Select Country',
-    'United States',
-    'United Kingdom',
-    'Canada',
-    'Australia',
-    'Germany',
-    'France',
-    'Spain',
-    'Italy',
-    'Japan',
-    'South Korea',
-    'India',
-    'Brazil',
-    'Mexico',
-    'Argentina',
-    'South Africa',
-    'Nigeria',
-    'Egypt',
-    'Saudi Arabia',
-    'UAE',
-    'Turkey',
-    'Russia',
-    'China',
-    'Thailand',
-    'Singapore',
-    'Malaysia',
-    'Indonesia',
-    'Philippines',
-    'Vietnam',
-    'New Zealand',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _getCountriesUseCase = sl<GetCountriesUseCase>();
+    _loadCountries();
+  }
 
   @override
   void dispose() {
     _fullNameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCountries({int page = 1}) async {
+    try {
+      setState(() {
+        _isLoadingCountries = true;
+        _countriesError = null;
+        // Clear selected country when changing pages to avoid dropdown errors
+        if (page != _currentPage) {
+          _selectedCountryId = null;
+        }
+      });
+
+      final response = await _getCountriesUseCase(page: page);
+      setState(() {
+        _countries = response.countries;
+        _currentPage = response.currentPage;
+        _lastPage = response.lastPage;
+        _totalCountries = response.total;
+        _isLoadingCountries = false;
+      });
+    } catch (e) {
+      setState(() {
+        _countriesError = e.toString();
+        _isLoadingCountries = false;
+      });
+    }
+  }
+
+  void _goToFirstPage() {
+    if (_currentPage > 1) {
+      _loadCountries(page: 1);
+    }
+  }
+
+  void _goToPreviousPage() {
+    if (_currentPage > 1) {
+      _loadCountries(page: _currentPage - 1);
+    }
+  }
+
+  void _goToNextPage() {
+    if (_currentPage < _lastPage) {
+      _loadCountries(page: _currentPage + 1);
+    }
+  }
+
+  void _goToLastPage() {
+    if (_currentPage < _lastPage) {
+      _loadCountries(page: _lastPage);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
+        print('Signup auth state: $state');
         if (state is AuthSuccess) {
+          print('Signup successful, navigating to phone verification');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Sign up successful!'),
+              content: Text(
+                'Sign up successful! Please verify your phone number.',
+              ),
               backgroundColor: Colors.green,
             ),
           );
-          // Navigate to main app or next screen
+          // Navigate to phone verification
+          context.read<NavigationBloc>().add(
+            NavigateToPhoneVerification(
+              phone: _phoneController.text.trim(),
+              verifyToken: '', // Will be set when verification is requested
+            ),
+          );
         } else if (state is AuthFailure) {
+          print('Signup failed: ${state.error}');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.error), backgroundColor: Colors.red),
           );
@@ -191,6 +238,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         },
                       ),
                       const SizedBox(height: 20),
+                      // Phone Number
+                      TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          hintText: 'Phone Number',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Colors.grey),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Colors.grey),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Colors.black),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your phone number';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
                       // Password
                       TextFormField(
                         controller: _passwordController,
@@ -237,45 +313,193 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       const SizedBox(height: 20),
                       // Country Dropdown
-                      DropdownButtonFormField<String>(
-                        value: _selectedCountry,
-                        decoration: InputDecoration(
-                          hintText: 'Select Country',
-                          border: OutlineInputBorder(
+                      if (_isLoadingCountries)
+                        Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey),
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: Colors.grey),
+                            color: Colors.white,
                           ),
-                          enabledBorder: OutlineInputBorder(
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      else if (_countriesError != null)
+                        Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.red),
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: Colors.grey),
+                            color: Colors.white,
                           ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: Colors.black),
+                          child: Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.error, color: Colors.red),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Failed to load countries',
+                                    style: TextStyle(color: Colors.red[700]),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.refresh),
+                                  onPressed: _loadCountries,
+                                ),
+                              ],
+                            ),
                           ),
-                          filled: true,
-                          fillColor: Colors.white,
+                        )
+                      else
+                        DropdownButtonFormField<int>(
+                          value:
+                              _countries.any(
+                                (country) => country.id == _selectedCountryId,
+                              )
+                              ? _selectedCountryId
+                              : null,
+                          decoration: InputDecoration(
+                            hintText: 'Select Country',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(color: Colors.grey),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(color: Colors.grey),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(color: Colors.black),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                          items: _countries.map((Country country) {
+                            return DropdownMenuItem<int>(
+                              value: country.id,
+                              child: Text(country.country),
+                            );
+                          }).toList(),
+                          onChanged: (int? newValue) {
+                            setState(() {
+                              _selectedCountryId = newValue;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null || value <= 0) {
+                              return 'Please select your country';
+                            }
+                            return null;
+                          },
                         ),
-                        items: _countries.map((String country) {
-                          return DropdownMenuItem<String>(
-                            value: country,
-                            child: Text(country),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _selectedCountry = newValue;
-                          });
-                        },
-                        validator: (value) {
-                          if (value == null ||
-                              value.isEmpty ||
-                              value == 'Select Country') {
-                            return 'Please select your country';
-                          }
-                          return null;
-                        },
-                      ),
+                      // Pagination Controls
+                      if (!_isLoadingCountries &&
+                          _countriesError == null &&
+                          _lastPage > 1)
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: Column(
+                            children: [
+                              // Page Info
+                              Text(
+                                'Page $_currentPage of $_lastPage (Total: $_totalCountries countries)',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Note: Changing pages will clear your country selection',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.orange[600],
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              // Pagination Buttons
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  // First Page
+                                  IconButton(
+                                    onPressed: _currentPage > 1
+                                        ? _goToFirstPage
+                                        : null,
+                                    icon: const Icon(Icons.first_page),
+                                    iconSize: 20,
+                                    color: _currentPage > 1
+                                        ? Colors.black
+                                        : Colors.grey,
+                                  ),
+                                  // Previous Page
+                                  IconButton(
+                                    onPressed: _currentPage > 1
+                                        ? _goToPreviousPage
+                                        : null,
+                                    icon: const Icon(Icons.chevron_left),
+                                    iconSize: 20,
+                                    color: _currentPage > 1
+                                        ? Colors.black
+                                        : Colors.grey,
+                                  ),
+                                  // Page Number
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Text(
+                                      '$_currentPage',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                  // Next Page
+                                  IconButton(
+                                    onPressed: _currentPage < _lastPage
+                                        ? _goToNextPage
+                                        : null,
+                                    icon: const Icon(Icons.chevron_right),
+                                    iconSize: 20,
+                                    color: _currentPage < _lastPage
+                                        ? Colors.black
+                                        : Colors.grey,
+                                  ),
+                                  // Last Page
+                                  IconButton(
+                                    onPressed: _currentPage < _lastPage
+                                        ? _goToLastPage
+                                        : null,
+                                    icon: const Icon(Icons.last_page),
+                                    iconSize: 20,
+                                    color: _currentPage < _lastPage
+                                        ? Colors.black
+                                        : Colors.grey,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       const SizedBox(height: 30),
                       // Sign Up Button
                       SizedBox(
@@ -362,8 +586,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
         SignUpRequested(
           fullName: _fullNameController.text.trim(),
           email: _emailController.text.trim(),
+          phone: _phoneController.text.trim(),
           password: _passwordController.text,
-          country: _selectedCountry ?? '',
+          countryId: _selectedCountryId ?? 0,
         ),
       );
     }

@@ -1,5 +1,7 @@
 import '../../domain/entities/auth_result.dart';
 import '../../domain/entities/user.dart';
+import '../../domain/entities/forgot_password_result.dart';
+import '../../domain/entities/phone_verification_result.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
 import '../datasources/auth_local_datasource.dart';
@@ -18,20 +20,22 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<AuthResult> signUp({
     required String fullName,
     required String email,
+    required String phone,
     required String password,
-    required String country,
+    required int countryId,
   }) async {
     final result = await _remoteDataSource.signUp(
       fullName: fullName,
       email: email,
+      phone: phone,
       password: password,
-      country: country,
+      countryId: countryId,
     );
 
     if (result.isSuccess && result.user != null) {
       await _localDataSource.saveUser(result.user!);
-      if (result.token != null) {
-        await _localDataSource.saveToken(result.token!);
+      if (result.tokens != null) {
+        await _localDataSource.saveToken(result.tokens!.access);
       }
     }
 
@@ -40,18 +44,18 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<AuthResult> login({
-    required String emailOrPhone,
+    required String email,
     required String password,
   }) async {
     final result = await _remoteDataSource.login(
-      emailOrPhone: emailOrPhone,
+      email: email,
       password: password,
     );
 
     if (result.isSuccess && result.user != null) {
       await _localDataSource.saveUser(result.user!);
-      if (result.token != null) {
-        await _localDataSource.saveToken(result.token!);
+      if (result.tokens != null) {
+        await _localDataSource.saveToken(result.tokens!.access);
       }
     }
 
@@ -77,9 +81,53 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<ForgotPasswordResult> forgotPassword({required String email}) async {
+    return await _remoteDataSource.forgotPassword(email: email);
+  }
+
+  @override
+  Future<ResetPasswordResult> resetPassword({
+    required String resetToken,
+    required String code,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    return await _remoteDataSource.resetPassword(
+      resetToken: resetToken,
+      code: code,
+      password: password,
+      confirmPassword: confirmPassword,
+    );
+  }
+
+  @override
   Future<bool> isLoggedIn() async {
     final user = await getCurrentUser();
     final token = await _localDataSource.getCachedToken();
     return user != null && token != null;
+  }
+
+  @override
+  Future<PhoneVerificationRequestResult> requestPhoneVerification({
+    required String phone,
+  }) async {
+    return await _remoteDataSource.requestPhoneVerification(phone: phone);
+  }
+
+  @override
+  Future<PhoneVerificationConfirmResult> confirmPhoneVerification({
+    required String code,
+    required String verifyToken,
+  }) async {
+    final result = await _remoteDataSource.confirmPhoneVerification(
+      code: code,
+      verifyToken: verifyToken,
+    );
+
+    if (result.isSuccess && result.user != null) {
+      await _localDataSource.saveUser(result.user!);
+    }
+
+    return result;
   }
 }

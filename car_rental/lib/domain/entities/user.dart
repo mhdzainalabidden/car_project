@@ -1,20 +1,47 @@
 import 'package:equatable/equatable.dart';
 
+class Country extends Equatable {
+  final int id;
+  final String country;
+  final String abbreviation;
+
+  const Country({
+    required this.id,
+    required this.country,
+    required this.abbreviation,
+  });
+
+  @override
+  List<Object?> get props => [id, country, abbreviation];
+
+  factory Country.fromJson(Map<String, dynamic> json) {
+    return Country(
+      id: json['id'],
+      country: json['country'],
+      abbreviation: json['abbreviation'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'id': id, 'country': country, 'abbreviation': abbreviation};
+  }
+}
+
 class User extends Equatable {
-  final String id;
+  final int id;
   final String fullName;
   final String email;
-  final String country;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
+  final String phone;
+  final bool phoneIsVerified;
+  final Country country;
 
   const User({
     required this.id,
     required this.fullName,
     required this.email,
+    required this.phone,
+    required this.phoneIsVerified,
     required this.country,
-    this.createdAt,
-    this.updatedAt,
   });
 
   @override
@@ -22,52 +49,48 @@ class User extends Equatable {
     id,
     fullName,
     email,
+    phone,
+    phoneIsVerified,
     country,
-    createdAt,
-    updatedAt,
   ];
 
   User copyWith({
-    String? id,
+    int? id,
     String? fullName,
     String? email,
-    String? country,
-    DateTime? createdAt,
-    DateTime? updatedAt,
+    String? phone,
+    bool? phoneIsVerified,
+    Country? country,
   }) {
     return User(
       id: id ?? this.id,
       fullName: fullName ?? this.fullName,
       email: email ?? this.email,
+      phone: phone ?? this.phone,
+      phoneIsVerified: phoneIsVerified ?? this.phoneIsVerified,
       country: country ?? this.country,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'fullName': fullName,
+      'full_name': fullName,
       'email': email,
-      'country': country,
-      'createdAt': createdAt?.toIso8601String(),
-      'updatedAt': updatedAt?.toIso8601String(),
+      'phone': phone,
+      'phone_is_verified': phoneIsVerified,
+      'country': country.toJson(),
     };
   }
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'],
-      fullName: json['fullName'],
+      fullName: json['full_name'],
       email: json['email'],
-      country: json['country'],
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
+      phone: json['phone'],
+      phoneIsVerified: json['phone_is_verified'] ?? false,
+      country: Country.fromJson(json['country']),
     );
   }
 }
